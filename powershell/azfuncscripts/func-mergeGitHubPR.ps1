@@ -92,13 +92,13 @@ function Add-GitHubPRMessage {
     $commentBody = if ($updatePR) {
         $triggerTime = Get-Date -Format "HH:mm:ss"
         @{
-            body = "**[hugoScheduler] - mergePR Function** `nFunction Trigger Time: $triggerTime `n`n**Post Validation Failed** `n`nCurrent Day: $currentDay `nCurrent Time: $currentTime `n`nPost Day: $postMetaDataDay `nPost Time: $postMetaDataTime `n`nhugoScheduler will check again later!"
+            body = "**[hugoScheduler] - mergePR Function** `nFunction Trigger Time: $triggerTime `n`n**Post Validation Failed** `n`nCurrent Day: <code>$currentDay</code> `nCurrent Time: <code>$currentTime</code> `n`nPost Day: <code>$postMetaDataDay</code> `nPost Time: <code>$postMetaDataTime</code> `n`nhugoScheduler will check again later!"
         }
     }
     elseif ($mergePR) {
         $triggerTime = Get-Date -Format "HH:mm:ss"
         @{
-            body = "**[hugoScheduler] - mergePR Function** `nFunction Trigger Time: $triggerTime `n`n**Post Validation Passed** `n`nPost Day: $postMetaDataDay `nPost Time: $postMetaDataTime `n`nMerging PR Now!"
+            body = "**[hugoScheduler] - mergePR Function** `nFunction Trigger Time: $triggerTime `n`n**Post Validation Passed** `n`nPost Day: <code>$postMetaDataDay</code> `nPost Time: <code>$postMetaDataTime</code> `n`nMerging PR Now!"
         }
     }
 
