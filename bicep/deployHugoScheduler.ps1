@@ -1,3 +1,30 @@
+<#
+.SYNOPSIS
+    Deploy Hugo Scheduler using Azure CLI.
+
+.DESCRIPTION
+    This script deploys the Hugo Scheduler using Azure CLI. It takes in parameters such as subscription ID, deployment location, and environment type.
+
+.PARAMETER subscriptionId
+    The subscription ID for the deployment.
+
+.PARAMETER deployLocation
+    The location where the deployment will occur. Valid values are listed in the ValidateSet attribute.
+
+.PARAMETER environmentType
+    The environment type for the deployment. Valid values are 'prod', 'acc', and 'dev'.
+
+.EXAMPLE
+    .\deployHugoScheduler.ps1 -subscriptionId "12345678-1234-5678-1234-567890abcdef" -deployLocation "westeurope" -environmentType "prod"
+    Deploys the Hugo Scheduler in the "westeurope" location with the environment type set to "prod".
+
+.NOTES
+    This script requires the Azure CLI to be installed and logged in to an Azure subscription.
+    File Name      : deployHugoScheduler.ps1
+    Author         : Simon Lee - GitHub: @smoonlee - Twitter: @smoon_lee
+    Prerequisite   : Microsoft.VisualStudioCode, Git.Git, Microsoft.AzureCLI, Microsoft.Bicep
+#>
+
 param (
     [Parameter(Mandatory = $true, Position = 0, HelpMessage = "The subscription ID for the deployment.")]
     [string] $subscriptionId,
@@ -71,7 +98,7 @@ az account set --subscription $subscriptionId
 $subscriptionId = az account show --query id -o tsv
 
 # Get location short code
-$deploylocationShortCode = $locationShortCodes[$deployLocation]
+$deployLocationShortCode = $locationShortCodes[$deployLocation]
 
 # Generate deployment GUID
 $startTimeStamp = Get-Date -Format 'HH:mm:ss'
@@ -86,7 +113,7 @@ az deployment sub create `
     --location $deployLocation `
     --template-file ./hugoScheduler.bicep `
     --parameters deployLocation=$deployLocation `
-                 deployLocationShortCode=$deploylocationShortCode `
+                 deployLocationShortCode=$deployLocationShortCode `
                  environmentType=$environmentType `
                  deployGuid=$deployGuid `
     --confirm-with-what-if `

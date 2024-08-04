@@ -1,68 +1,114 @@
+<#
+.SYNOPSIS
+    Create GitHub Pull Requests for each branch in a repository.
+
+.DESCRIPTION
+    This script creates a GitHub Pull Request for each branch in a specified repository, excluding the default branch. It is triggered by an HTTP request and expects a JSON payload with the following properties:
+    - BlogTitle: The title of the blog post.
+    - PublishDay: The day the blog post will be published.
+    - PublishTime: The time the blog post will be published.
+
+    Required GitHub Fine-Grained Scope:
+    - Contents [RW]
+    - Pull Requests [RW]
+    - Metadata [R]
+
+    Required environment variables:
+    - GITHUB_USER_TOKEN: A GitHub personal access token with the necessary permissions.
+    - GITHUB_REPO_OWNER: The owner of the GitHub repository.
+    - GITHUB_REPO_NAME: The name of the GitHub repository.
+    - GITHUB_DEFAULT_BRANCH: The default branch of the GitHub repository.
+
+    The script uses the GitHub REST API to create the pull requests.
+
+.NOTES
+    File Name      : createGitHubPR.ps1
+    Author         : https://twitter.com/smoon_lee
+    Blog           : https://blog.builtwithcaffeine.cloud
+#>
+
 using namespace System.Net
 
-# Input bindings are passed in via the param block.
 param($Request, $TriggerMetadata)
 
-# Convert the raw JSON body to a PowerShell object
-$requestData = $Request.RawBody | ConvertFrom-Json
+# GitHub Repository Variables
+$ghToken = $env:GITHUB_USER_TOKEN
+$ghOwner = $env:GITHUB_REPO_OWNER
+$ghRepository = $env:GITHUB_REPO_NAME
+$ghDefaultBranch = $env:GITHUB_DEFAULT_BRANCH
 
-# JSON Export
-$PublishDay = $requestData.PublishDay
-$PublishTime = $requestData.PublishTime
-$BlogTitle = $requestData.BlogTitle
+# Validate required environment variables
+if (-not $ghToken -or -not $ghOwner -or -not $ghRepository -or -not $ghDefaultBranch) {
+    Write-Warning "Error: Missing required environment variables."
+    exit 1
+}
 
-# Verbose Message
-Write-Output "Response Data:"
-Write-Output "PublishDay...: $PublishDay"
-Write-Output "PublishTime..: $PublishTime"
+# GitHub API URIs
+$ghRepositoryUri = "https://api.github.com/repos/$ghOwner/$ghRepository/branches"
+$ghCreatePullRequestUri = "https://api.github.com/repos/$ghOwner/$ghRepository/pulls"
+$ghHeaders = @{
+    Authorization = "Bearer $ghToken"
+    Accept        = "application/vnd.github.v3+json"
+}
+
+# Convert JSON Payload
+try {
+    $requestData = $Request.RawBody | ConvertFrom-Json
+    $PublishDay = $requestData.PublishDay
+    $PublishTime = $requestData.PublishTime
+    $BlogTitle = $requestData.BlogTitle
+}
+catch {
+    Write-Warning "Error: Invalid JSON payload."
+    exit 1
+}
+
+# Verbose JSON Check
+Write-Output `r "JSON Response Data:"
 Write-Output "BlogTitle....: $BlogTitle"
+Write-Output "PublishDay...: $PublishDay"
+Write-Output "PublishTime..: $PublishTime" `r
 
-# Associate values to output bindings by calling 'Push-OutputBinding'.
+# Send response back indicating the request was received
 Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
         StatusCode = [HttpStatusCode]::OK
         Body       = "Request Received, Awesome Work!"
     })
 
-Write-Output "GitHub Automated Pull Request Trigger"
-$GitHubAuthentication = $env:GITHUB_USER_TOKEN
-$repoOwner = 'builtwithcaffeine'
-$repoName = 'swa-builtwithcaffeine-dev'
-$Uri = "https://api.github.com/repos/$repoOwner/$repoName/branches"
-$createPullRequestUri = "https://api.github.com/repos/$repoOwner/$repoName/pulls"
-$GitHubBranches = Invoke-WebRequest -Uri $Uri -Headers @{
-    Authorization = "Bearer $GitHubAuthentication"
-} -Method Get -UseBasicParsing -ContentType "application/json"
+# Get Current GitHub Branches
+try {
+    $githubBranchesResponse = Invoke-WebRequest -Method Get -Uri $ghRepositoryUri -Headers $ghHeaders -ContentType "application/json"
+    $githubBranches = $githubBranchesResponse.Content | ConvertFrom-Json
+}
+catch {
+    Write-Warning "Error: Unable to fetch branches from GitHub."
+    exit 1
+}
 
-# Exclude the "main" branch from the list
-$GitHubBranchesData = $GitHubBranches.Content | ConvertFrom-Json
-$DefaultBranch = "dev-main"
-$filteredBranches = $GitHubBranchesData | Where-Object { $_.name -ne $DefaultBranch }
-
-Write-Output "" # Gap required for Clean Debugging
-Write-Output "[API Check] :: Branches Found: $($filteredBranches)"
+# Filter out the default branch
+$filteredBranches = $githubBranches | Where-Object { $_.name -ne $ghDefaultBranch }
 
 # Create pull requests for each branch
 foreach ($branch in $filteredBranches) {
     $sourceBranch = $branch.name
-
-    # Create pull request data
     $pullRequestData = @{
         title = "[AzFunction] - New Blog Post: $BlogTitle"
-        body  = "PublishDay: $PublishDay, `nPublishTime: $PublishTime"
+        body  = "**[hugoScheduler] - Pending Schedule** `nPublishDay..: <code>$PublishDay</code>,`nPublishTime: <code>$PublishTime</code>"
         head  = $sourceBranch
-        base  = $DefaultBranch
+        base  = $ghDefaultBranch
     }
 
     # Convert data to JSON
     $pullRequestJson = $pullRequestData | ConvertTo-Json
 
-    # Create pull request
-    $createPullRequest = Invoke-WebRequest -Uri $createPullRequestUri -Headers @{
-        Authorization = "Bearer $GitHubAuthentication"
-        Accept        = "application/vnd.github.v3+json"
-    } -Method Post -Body $pullRequestJson -ContentType "application/json"
-
-    # Display the result
-    $pullRequestInfo = $createPullRequest.Content | ConvertFrom-Json
-    Write-Host "Pull Request created for $($branch.name). URL: $($pullRequestInfo.html_url)"
+    # Attempt to create pull request
+    try {
+        $createPullRequestResponse = Invoke-WebRequest -Method Post -Uri $ghCreatePullRequestUri -Headers $ghHeaders -Body $pullRequestJson -ContentType "application/json"
+        $pullRequestInfo = $createPullRequestResponse.Content | ConvertFrom-Json
+        $pullRequestNumber = $pullRequestInfo.number
+        Write-Output `r "Pull Request [#$pullRequestNumber] created: $sourceBranch." `r
+    }
+    catch {
+        Write-Warning "Error: Unable to create pull request for branch: $sourceBranch."
+    }
 }

@@ -147,6 +147,9 @@ module createFunctionApp 'br/public:avm/res/web/site:0.3.9' = {
       FUNCTIONS_WORKER_RUNTIME: 'powershell'
       WEBSITE_TIME_ZONE: FUNC_TIME_ZONE
       GITHUB_USER_TOKEN: 'github-token'
+      GITHUB_REPO_OWNER: 'github-owner'
+      GITHUB_REPO_NAME: 'github-repo'
+      GITHUB_DEFAULT_BRANCH: 'main'
     }
     siteConfig: {
       alwaysOn: false
@@ -155,6 +158,9 @@ module createFunctionApp 'br/public:avm/res/web/site:0.3.9' = {
       http20Enabled: true
       minTlsVersion: '1.3'
       use32BitWorkerProcess: false
+      cors: {
+        allowedOrigins: ['*']
+      }
     }
     basicPublishingCredentialsPolicies: [
       {
