@@ -52,14 +52,14 @@ function Parse-JsonBody {
     $publishTime = $null
 
     foreach ($line in $lines) {
-        if ($line -match '^(.+?):\s*(.+?)(,|\s*$)') {
+        if ($line -match '^(.+?):\s*<code>(.+?)<\/code>(,|\s*$)') {
             $key = $matches[1].Trim()
-            $value = $matches[2].Trim().TrimEnd(',')
+            $value = $matches[2].Trim()
 
             Write-Output "Key: $key, Value: $value"
 
             switch ($key) {
-                "PublishDay" { $publishDay = $value }
+                "PublishDay.." { $publishDay = $value }
                 "PublishTime" { $publishTime = $value }
             }
         }

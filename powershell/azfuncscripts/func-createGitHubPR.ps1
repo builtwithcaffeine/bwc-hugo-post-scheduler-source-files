@@ -93,7 +93,7 @@ foreach ($branch in $filteredBranches) {
     $sourceBranch = $branch.name
     $pullRequestData = @{
         title = "[AzFunction] - New Blog Post: $BlogTitle"
-        body  = "PublishDay: $PublishDay,`nPublishTime: $PublishTime"
+        body  = "**[hugoScheduler] - Pending Schedule** `nPublishDay..: <code>$PublishDay</code>,`nPublishTime: <code>$PublishTime</code>"
         head  = $sourceBranch
         base  = $ghDefaultBranch
     }
