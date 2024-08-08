@@ -116,7 +116,7 @@ module createAppServicePlan 'br/public:avm/res/web/serverfarm:0.2.2' = {
     name: newAppServicePlanName
     skuCapacity: 1
     skuName: 'Y1'
-    kind: 'Linux'
+    kind: 'Windows'
     location: deployLocation
     tags: tags
   }
