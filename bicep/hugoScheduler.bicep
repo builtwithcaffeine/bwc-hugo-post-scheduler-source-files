@@ -1,10 +1,11 @@
 targetScope = 'subscription'
 
-// Imported Values from deployhugo1Scheduler.ps1
+// Imported Values from deployHugoScheduler.ps1
 param deployGuid string
 param deployLocation string
 param deployLocationShortCode string
 param environmentType string
+param projectName string
 
 // Azure Governance Variables
 param tags object = {
@@ -13,22 +14,22 @@ param tags object = {
 }
 
 // Resource Group Variables
-param newResourceGroupName string = 'rg-hugo1-scheduler-${environmentType}-${deployLocationShortCode}'
+param newResourceGroupName string = 'rg-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
 
 // Storage Account Variables
-param newStorageAccountName string = 'sahugo1scheduler${environmentType}${deployLocationShortCode}'
+param newStorageAccountName string = 'sa${projectName}scheduler${environmentType}${deployLocationShortCode}'
 
 // Application Insights Variables
-param newAppInsightsName string = 'ai-hugo1-scheduler-${environmentType}-${deployLocationShortCode}'
+param newAppInsightsName string = 'ai-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
 
 // Log Analytics Variables
-param newLogAnalyticsName string = 'la-hugo1-scheduler-${environmentType}-${deployLocationShortCode}'
+param newLogAnalyticsName string = 'la-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
 
 // App Service Plan Variables
-param newAppServicePlanName string = 'asp-hugo1-scheduler-${environmentType}-${deployLocationShortCode}'
+param newAppServicePlanName string = 'asp-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
 
 // Azure Function Variables
-param newFunctionAppName string = 'func-hugo1-scheduler-${environmentType}-${deployLocationShortCode}'
+param newFunctionAppName string = 'func-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
 param FUNC_TIME_ZONE string = 'GMT Standard Time'
 
 //
