@@ -45,6 +45,7 @@ switch ($environment) {
 }
 
 $datePrefix = Get-Date -Format "yyyy-MM"
+$newPost = $newPost.ToLower().Replace(" ", "-")
 $hugoContentPath = "$hugoSourcePath\content\posts\$datePrefix-$newPost\index.md"
 
 Write-Output "Creating new post: $datePrefix-$newPost"
