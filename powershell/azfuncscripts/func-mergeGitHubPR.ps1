@@ -29,7 +29,7 @@
 # Input bindings are passed in via param block.
 param($Timer)
 
-# # GitHub Repository Variables
+# GitHub Repository Variables
 $ghToken = $env:GITHUB_USER_TOKEN
 $ghOwner = $env:GITHUB_REPO_OWNER
 $ghRepository = $env:GITHUB_REPO_NAME
