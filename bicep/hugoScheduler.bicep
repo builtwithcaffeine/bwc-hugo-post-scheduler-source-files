@@ -1,6 +1,6 @@
 targetScope = 'subscription'
 
-// Imported Values from deployHugoScheduler.ps1
+// Imported Values from deployhugo1Scheduler.ps1
 param deployGuid string
 param deployLocation string
 param deployLocationShortCode string
@@ -13,22 +13,22 @@ param tags object = {
 }
 
 // Resource Group Variables
-param newResourceGroupName string = 'rg-hugo-scheduler-${environmentType}-${deployLocationShortCode}'
+param newResourceGroupName string = 'rg-hugo1-scheduler-${environmentType}-${deployLocationShortCode}'
 
 // Storage Account Variables
-param newStorageAccountName string = 'sahugoscheduler${environmentType}${deployLocationShortCode}'
+param newStorageAccountName string = 'sahugo1scheduler${environmentType}${deployLocationShortCode}'
 
 // Application Insights Variables
-param newAppInsightsName string = 'ai-hugo-scheduler-${environmentType}-${deployLocationShortCode}'
+param newAppInsightsName string = 'ai-hugo1-scheduler-${environmentType}-${deployLocationShortCode}'
 
 // Log Analytics Variables
-param newLogAnalyticsName string = 'la-hugo-scheduler-${environmentType}-${deployLocationShortCode}'
+param newLogAnalyticsName string = 'la-hugo1-scheduler-${environmentType}-${deployLocationShortCode}'
 
 // App Service Plan Variables
-param newAppServicePlanName string = 'asp-hugo-scheduler-${environmentType}-${deployLocationShortCode}'
+param newAppServicePlanName string = 'asp-hugo1-scheduler-${environmentType}-${deployLocationShortCode}'
 
 // Azure Function Variables
-param newFunctionAppName string = 'func-hugo-scheduler-${environmentType}-${deployLocationShortCode}'
+param newFunctionAppName string = 'func-hugo1-scheduler-${environmentType}-${deployLocationShortCode}'
 param FUNC_TIME_ZONE string = 'GMT Standard Time'
 
 //
@@ -36,7 +36,7 @@ param FUNC_TIME_ZONE string = 'GMT Standard Time'
 //
 
 // [AVM Module] - Resource Group
-module createResourceGroup 'br/public:avm/res/resources/resource-group:0.2.4' = {
+module createResourceGroup 'br/public:avm/res/resources/resource-group:0.3.0' = {
   name: 'createNewResourceGroup-${deployGuid}'
   params: {
     name: newResourceGroupName
@@ -46,7 +46,7 @@ module createResourceGroup 'br/public:avm/res/resources/resource-group:0.2.4' = 
 }
 
 // [AVM Module] - Storage Account
-// module createStorageAccount1 'br/public:avm/res/storage/storage-account:0.11.0' = {
+// module createStorageAccount1 'br/public:avm/res/storage/storage-account:0.11.1' = {
 //   name: 'createStorageAccount-${deployGuid}'
 //   scope: resourceGroup(newResourceGroupName)
 //   params: {
@@ -77,7 +77,7 @@ module createStorageAccount './modules/storageAccount.bicep' = {
 }
 
 // [AVM Module] - Log Analytics
-module createLogAnalytics 'br/public:avm/res/operational-insights/workspace:0.4.0' = {
+module createLogAnalytics 'br/public:avm/res/operational-insights/workspace:0.5.0' = {
   name: 'createLogAnalytics-${deployGuid}'
   scope: resourceGroup(newResourceGroupName)
   params: {
@@ -91,7 +91,7 @@ module createLogAnalytics 'br/public:avm/res/operational-insights/workspace:0.4.
 }
 
 // [AVM Module] - Application Insights
-module createApplicationInsights 'br/public:avm/res/insights/component:0.3.1' = {
+module createApplicationInsights 'br/public:avm/res/insights/component:0.4.0' = {
   name: 'createAppInsights-${deployGuid}'
   scope: resourceGroup(newResourceGroupName)
   params: {
@@ -115,7 +115,7 @@ module createAppServicePlan 'br/public:avm/res/web/serverfarm:0.2.2' = {
     name: newAppServicePlanName
     skuCapacity: 1
     skuName: 'Y1'
-    kind: 'Windows'
+    kind: 'Linux'
     location: deployLocation
     tags: tags
   }
@@ -128,7 +128,7 @@ module createAppServicePlan 'br/public:avm/res/web/serverfarm:0.2.2' = {
 }
 
 // [AVM Module] - Function App
-module createFunctionApp 'br/public:avm/res/web/site:0.3.9' = {
+module createFunctionApp 'br/public:avm/res/web/site:0.4.0' = {
   name: 'createFunctionApp-${deployGuid}'
   scope: resourceGroup(newResourceGroupName)
   params: {
