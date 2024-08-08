@@ -1,22 +1,26 @@
 <#
 .SYNOPSIS
-    Deploy Hugo Scheduler using Azure CLI.
+Deploy Hugo Scheduler
 
 .DESCRIPTION
-    This script deploys the Hugo Scheduler using Azure CLI. It takes in parameters such as subscription ID, deployment location, and environment type.
+This script deploys the Hugo Scheduler using Azure CLI. It takes in parameters such as subscription ID, deployment location, environment type, and project name. It creates a new deployment GUID, sets the Azure subscription, and deploys the Hugo Scheduler using the specified parameters.
 
 .PARAMETER subscriptionId
-    The subscription ID for the deployment.
+The subscription ID for the deployment.
 
 .PARAMETER deployLocation
-    The location where the deployment will occur. Valid values are listed in the ValidateSet attribute.
+The location where the deployment will occur. Valid values are listed in the ValidateSet attribute.
 
 .PARAMETER environmentType
-    The environment type for the deployment. Valid values are 'prod', 'acc', and 'dev'.
+The environment type for the deployment. Valid values are 'prod', 'acc', and 'dev'.
+
+.PARAMETER projectName
+The name of the project.
 
 .EXAMPLE
-    .\deployHugoScheduler.ps1 -subscriptionId "12345678-1234-5678-1234-567890abcdef" -deployLocation "westeurope" -environmentType "prod"
-    Deploys the Hugo Scheduler in the "westeurope" location with the environment type set to "prod".
+deployHugoScheduler.ps1 -subscriptionId "12345678-1234-1234-1234-1234567890ab" -deployLocation "westeurope" -environmentType "prod" -projectName "hugo"
+
+This example deploys the Hugo Scheduler to the "westeurope" location in the production environment for the project named "Hugo".
 
 .NOTES
     This script requires the Azure CLI to be installed and logged in to an Azure subscription.
@@ -24,7 +28,6 @@
     Author         : Simon Lee - GitHub: @smoonlee - Twitter: @smoon_lee
     Prerequisite   : Microsoft.VisualStudioCode, Git.Git, Microsoft.AzureCLI, Microsoft.Bicep
 #>
-
 param (
     [Parameter(Mandatory = $true, Position = 0, HelpMessage = "The subscription ID for the deployment.")]
     [string] $subscriptionId,
@@ -47,8 +50,20 @@ param (
 
     [Parameter(Mandatory = $true, Position = 2, HelpMessage = "The environment type for the deployment. Valid values are 'prod', 'acc', and 'dev'.")]
     [ValidateSet('prod', 'acc', 'dev')]
-    [string] $environmentType
+    [string] $environmentType,
+
+    # Parameter help description
+    [Parameter(Mandatory = $true)]
+    [string] $projectName
 )
+
+# Import PowerShell Functions
+Get-ChildItem -Path "$PSScriptRoot\functions" -Filter *.ps1 | ForEach-Object {
+    . $_.FullName
+}
+
+# Check Project Name Length
+checkProjectName -projectName $projectName
 
 # Location short codes
 $locationShortCodes = @{
@@ -116,6 +131,7 @@ az deployment sub create `
                  deployLocationShortCode=$deployLocationShortCode `
                  environmentType=$environmentType `
                  deployGuid=$deployGuid `
+                 projectName=$projectName `
     --confirm-with-what-if `
     --output none
 
