@@ -116,6 +116,7 @@ module createStorageAccount 'br/public:avm/res/storage/storage-account:0.13.2' =
     location: deployLocation
     skuName: 'Standard_GRS'
     minimumTlsVersion: 'TLS1_2'
+    publicNetworkAccess: 'Enabled'
     allowSharedKeyAccess: true
     secretsExportConfiguration: {
       accessKey1: 'accessKey1'
@@ -123,6 +124,10 @@ module createStorageAccount 'br/public:avm/res/storage/storage-account:0.13.2' =
       connectionString1: 'connectionString1'
       connectionString2: 'connectionString2'
       keyVaultResourceId: createKeyVault.outputs.resourceId
+    }
+    networkAcls: {
+      bypass: 'AzureServices'
+      defaultAction: 'Allow'
     }
     tags: tags
   }
@@ -214,7 +219,8 @@ module createFunctionApp 'br/public:avm/res/web/site:0.7.0' = {
     appSettingsKeyValuePairs: {
       APPLICATIONINSIGHTS_CONNECTION_STRING: createApplicationInsights.outputs.connectionString
       //WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: 'DefaultEndpointsProtocol=https;AccountName=${createStorageAccount.outputs.name};AccountKey=${createStorageAccount.outputs.primaryAccessKey};EndpointSuffix=core.windows.net'
-      WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${createStorageAccount.outputs.exportedSecrets.connectionString1.secretUri})'
+      //WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${createStorageAccount.outputs.exportedSecrets.connectionString1.secretUri})'
+      WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(VaultName=${newKeyVaultName};SecretName=connectionString1)'
       WEBSITE_CONTENTSHARE: newFunctionAppName
       FUNCTIONS_EXTENSION_VERSION: '~4'
       FUNCTIONS_WORKER_RUNTIME: 'powershell'
