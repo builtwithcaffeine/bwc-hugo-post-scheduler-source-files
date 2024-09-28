@@ -4,49 +4,81 @@ targetScope = 'subscription'
 param deployGuid string
 param deployLocation string
 param deployLocationShortCode string
+param deployedBy string
 param environmentType string
 param projectName string
+param userAccountGuid string
 
 // Azure Governance Variables
 param tags object = {
   Environment: environmentType
   LastUpdatedOn: utcNow('yyyy-MM-dd')
+  deployedBy: deployedBy
 }
 
 // Resource Group Variables
-param newResourceGroupName string = 'rg-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
+param resourceGroupName string = 'rg-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
 
 // User Managed Identity Variables
-param newUserManagedIdentityName string = 'mi-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
+param userManagedIdentityName string = 'id-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
 
 // Key Vault Variables
-param newKeyVaultName string = 'kv-${projectName}-scheduler-${environmentType}'
+param keyvaultName string = 'kv-${projectName}-scheduler-${environmentType}'
+param kvSoftDeleteRetentionInDays int = 7
+param kvNetworkAcls object = {
+  bypass: 'AzureServices'
+  defaultAction: 'Allow'
+}
+param kvSecretArray array = [
+  {
+    name: 'githubUserToken'
+    value: 'github-token'
+  }
+  {
+    name: 'githubRepoOwner'
+    value: 'github-owner'
+  }
+  {
+    name: 'githubRepoName'
+    value: 'github-repo'
+  }
+]
 
 // Storage Account Variables
-param newStorageAccountName string = 'sa${projectName}scheduler${environmentType}${deployLocationShortCode}'
-
-// Application Insights Variables
-param newAppInsightsName string = 'ai-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
+param storageAccountName string = 'sa${projectName}scheduler${environmentType}${deployLocationShortCode}'
+param stSkuName string = 'Standard_GRS'
+param stTlsVersion string = 'TLS1_2'
+param stPublicNetworkAccess string = 'Enabled'
+param stAllowedSharedKeyAccess bool = true
+param stNetworkAcls object = {
+  bypass: 'AzureServices'
+  defaultAction: 'Allow'
+}
 
 // Log Analytics Variables
-param newLogAnalyticsName string = 'la-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
+param logAnalyticsName string = 'la-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
+
+// Application Insights Variables
+param appInsightsName string = 'ai-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
 
 // App Service Plan Variables
 param newAppServicePlanName string = 'asp-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
+param aspCapacity int = 1
+param aspSkuName string = 'Y1'
+param aspKind string = 'Linux'
 
 // Azure Function Variables
-param newFunctionAppName string = 'func-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
-param FUNC_TIME_ZONE string = 'GMT Standard Time'
+param functionAppName string = 'func-${projectName}-scheduler-${environmentType}-${deployLocationShortCode}'
 
 //
 // NO HARD CODING UNDER THERE! K THANKS BYE 👋
 //
 
 // [AVM Module] - Resource Group
-module createResourceGroup 'br/public:avm/res/resources/resource-group:0.3.0' = {
-  name: 'createNewResourceGroup-${deployGuid}'
+module createResourceGroup 'br/public:avm/res/resources/resource-group:0.4.0' = {
+  name: 'createResourceGroup-${deployGuid}'
   params: {
-    name: newResourceGroupName
+    name: resourceGroupName
     location: deployLocation
     tags: tags
   }
@@ -54,9 +86,9 @@ module createResourceGroup 'br/public:avm/res/resources/resource-group:0.3.0' = 
 
 module createUserManagedIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.4.0' = {
   name: 'createUserManagedIdentity-${deployGuid}'
-  scope: resourceGroup(newResourceGroupName)
+  scope: resourceGroup(resourceGroupName)
   params: {
-    name: newUserManagedIdentityName
+    name: userManagedIdentityName
     location: deployLocation
     tags: tags
   }
@@ -65,15 +97,19 @@ module createUserManagedIdentity 'br/public:avm/res/managed-identity/user-assign
   ]
 }
 
+// [AVM] - Key Vault
 module createKeyVault 'br/public:avm/res/key-vault/vault:0.9.0' = {
   name: 'createKeyVault-${deployGuid}'
-  scope: resourceGroup(newResourceGroupName)
+  scope: resourceGroup(resourceGroupName)
   params: {
-    name: newKeyVaultName
+    name: keyvaultName
+    sku: 'standard'
     location: deployLocation
     tags: tags
     enableRbacAuthorization: true
     enablePurgeProtection: false
+    softDeleteRetentionInDays: kvSoftDeleteRetentionInDays
+    networkAcls: kvNetworkAcls
     roleAssignments: [
       {
         principalId: createUserManagedIdentity.outputs.principalId
@@ -85,21 +121,18 @@ module createKeyVault 'br/public:avm/res/key-vault/vault:0.9.0' = {
         roleDefinitionIdOrName: 'Key Vault Secrets Officer'
         principalType: 'ServicePrincipal'
       }
-    ]
-    secrets: [
       {
-        name: 'github-token'
-        value: 'github-token'
+        principalId: userAccountGuid
+        roleDefinitionIdOrName: 'Key Vault Administrator'
+        principalType: 'User'
       }
       {
-        name: 'github-owner'
-        value: 'github-owner'
-      }
-      {
-        name: 'github-repo'
-        value: 'github-repo'
+        principalId: userAccountGuid
+        roleDefinitionIdOrName: 'Key Vault Secrets Officer'
+        principalType: 'User'
       }
     ]
+    secrets: kvSecretArray
   }
   dependsOn: [
     createResourceGroup
@@ -110,14 +143,14 @@ module createKeyVault 'br/public:avm/res/key-vault/vault:0.9.0' = {
 // [AVM Module] - Storage Account
 module createStorageAccount 'br/public:avm/res/storage/storage-account:0.13.2' = {
   name: 'createStorageAccount-${deployGuid}'
-  scope: resourceGroup(newResourceGroupName)
+  scope: resourceGroup(resourceGroupName)
   params: {
-    name: newStorageAccountName
+    name: storageAccountName
     location: deployLocation
-    skuName: 'Standard_GRS'
-    minimumTlsVersion: 'TLS1_2'
-    publicNetworkAccess: 'Enabled'
-    allowSharedKeyAccess: true
+    skuName: stSkuName
+    minimumTlsVersion: stTlsVersion
+    publicNetworkAccess: stPublicNetworkAccess
+    allowSharedKeyAccess: stAllowedSharedKeyAccess
     secretsExportConfiguration: {
       accessKey1: 'accessKey1'
       accessKey2: 'accessKey2'
@@ -125,10 +158,7 @@ module createStorageAccount 'br/public:avm/res/storage/storage-account:0.13.2' =
       connectionString2: 'connectionString2'
       keyVaultResourceId: createKeyVault.outputs.resourceId
     }
-    networkAcls: {
-      bypass: 'AzureServices'
-      defaultAction: 'Allow'
-    }
+    networkAcls: stNetworkAcls
     tags: tags
   }
   dependsOn: [
@@ -137,26 +167,12 @@ module createStorageAccount 'br/public:avm/res/storage/storage-account:0.13.2' =
   ]
 }
 
-// // [Bicep Custom Module] - Storage Account
-// module createStorageAccount './modules/storageAccount.bicep' = {
-//   scope: resourceGroup(newResourceGroupName)
-//   name: 'createStorageAccount-${deployGuid}'
-//   params: {
-//     location: deployLocation
-//     name: newStorageAccountName
-//     tags: tags
-//   }
-//   dependsOn: [
-//     createResourceGroup
-//   ]
-// }
-
 // [AVM Module] - Log Analytics
-module createLogAnalytics 'br/public:avm/res/operational-insights/workspace:0.6.0' = {
+module createLogAnalytics 'br/public:avm/res/operational-insights/workspace:0.7.0' = {
   name: 'createLogAnalytics-${deployGuid}'
-  scope: resourceGroup(newResourceGroupName)
+  scope: resourceGroup(resourceGroupName)
   params: {
-    name: newLogAnalyticsName
+    name: logAnalyticsName
     location: deployLocation
     tags: tags
   }
@@ -168,9 +184,9 @@ module createLogAnalytics 'br/public:avm/res/operational-insights/workspace:0.6.
 // [AVM Module] - Application Insights
 module createApplicationInsights 'br/public:avm/res/insights/component:0.4.1' = {
   name: 'createAppInsights-${deployGuid}'
-  scope: resourceGroup(newResourceGroupName)
+  scope: resourceGroup(resourceGroupName)
   params: {
-    name: newAppInsightsName
+    name: appInsightsName
     workspaceResourceId: createLogAnalytics.outputs.resourceId
     location: deployLocation
     tags: tags
@@ -180,15 +196,15 @@ module createApplicationInsights 'br/public:avm/res/insights/component:0.4.1' = 
   ]
 }
 
-// [AVM Module] - App Service Environment
-module createAppServicePlan 'br/public:avm/res/web/serverfarm:0.2.2' = {
-  scope: resourceGroup(newResourceGroupName)
+// [AVM Module] - App Service Plan
+module createAppServicePlan 'br/public:avm/res/web/serverfarm:0.2.3' = {
+  scope: resourceGroup(resourceGroupName)
   name: 'createServerFarmDeployment-${deployGuid}'
   params: {
     name: newAppServicePlanName
-    skuCapacity: 1
-    skuName: 'Y1'
-    kind: 'Linux'
+    skuCapacity: aspCapacity
+    skuName: aspSkuName
+    kind: aspKind
     location: deployLocation
     tags: tags
   }
@@ -198,12 +214,12 @@ module createAppServicePlan 'br/public:avm/res/web/serverfarm:0.2.2' = {
 }
 
 // [AVM Module] - Function App
-module createFunctionApp 'br/public:avm/res/web/site:0.7.0' = {
+module createFunctionApp 'br/public:avm/res/web/site:0.9.0' = {
   name: 'createFunctionApp-${deployGuid}'
-  scope: resourceGroup(newResourceGroupName)
+  scope: resourceGroup(resourceGroupName)
   params: {
     kind: 'functionapp,linux'
-    name: newFunctionAppName
+    name: functionAppName
     location: deployLocation
     httpsOnly: true
     serverFarmResourceId: createAppServicePlan.outputs.resourceId
@@ -218,16 +234,13 @@ module createFunctionApp 'br/public:avm/res/web/site:0.7.0' = {
     }
     appSettingsKeyValuePairs: {
       APPLICATIONINSIGHTS_CONNECTION_STRING: createApplicationInsights.outputs.connectionString
-      //WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: 'DefaultEndpointsProtocol=https;AccountName=${createStorageAccount.outputs.name};AccountKey=${createStorageAccount.outputs.primaryAccessKey};EndpointSuffix=core.windows.net'
-      //WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${createStorageAccount.outputs.exportedSecrets.connectionString1.secretUri})'
-      WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(VaultName=${newKeyVaultName};SecretName=connectionString1)'
-      WEBSITE_CONTENTSHARE: newFunctionAppName
+      WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(VaultName=${keyvaultName};SecretName=connectionString1)'
+      WEBSITE_CONTENTSHARE: functionAppName
       FUNCTIONS_EXTENSION_VERSION: '~4'
       FUNCTIONS_WORKER_RUNTIME: 'powershell'
-      WEBSITE_TIME_ZONE: FUNC_TIME_ZONE
-      GITHUB_USER_TOKEN: '@Microsoft.KeyVault(VaultName=${newKeyVaultName};SecretName=github-token)'
-      GITHUB_REPO_OWNER: '@Microsoft.KeyVault(VaultName=${newKeyVaultName};SecretName=github-owner)'
-      GITHUB_REPO_NAME: '@Microsoft.KeyVault(VaultName=${newKeyVaultName};SecretName=github-repo)'
+      GITHUB_USER_TOKEN: '@Microsoft.KeyVault(VaultName=${keyvaultName};SecretName=githubUserToken)'
+      GITHUB_REPO_OWNER: '@Microsoft.KeyVault(VaultName=${keyvaultName};SecretName=githubRepoOwner)'
+      GITHUB_REPO_NAME: '@Microsoft.KeyVault(VaultName=${keyvaultName};SecretName=githubRepoName)'
       GITHUB_DEFAULT_BRANCH: 'main'
     }
     siteConfig: {

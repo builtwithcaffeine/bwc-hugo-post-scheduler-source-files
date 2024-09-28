@@ -57,6 +57,47 @@ param (
     [string] $projectName
 )
 
+# Location short codes
+$locationShortCodes = @{
+    "eastus"             = "eus"
+    "eastus2"            = "eus2"
+    "westus"             = "wus"
+    "westus2"            = "wus2"
+    "northcentralus"     = "ncu"
+    "southcentralus"     = "scu"
+    "centralus"          = "ceu"
+    "canadacentral"      = "cac"
+    "canadaeast"         = "cae"
+    "brazilsouth"        = "sau"
+    "northeurope"        = "neu"
+    "westeurope"         = "weu"
+    "uksouth"            = "uks"
+    "ukwest"             = "ukw"
+    "francecentral"      = "frc"
+    "francesouth"        = "frs"
+    "germanywestcentral" = "gwc"
+    "germanynorth"       = "gen"
+    "switzerlandnorth"   = "swn"
+    "switzerlandwest"    = "sww"
+    "norwayeast"         = "noe"
+    "norwaywest"         = "now"
+    "eastasia"           = "eas"
+    "southeastasia"      = "sea"
+    "japaneast"          = "jae"
+    "japanwest"          = "jaw"
+    "australiaeast"      = "aue"
+    "australiasoutheast" = "aus"
+    "centralindia"       = "cin"
+    "southindia"         = "sin"
+    "westindia"          = "win"
+    "koreacentral"       = "koc"
+    "koreasouth"         = "kos"
+    "uaenorth"           = "uan"
+    "uaecentral"         = "uac"
+    "southafricanorth"   = "sna"
+    "southafricawest"    = "saw"
+}
+
 # Import PowerShell Functions
 Get-ChildItem -Path "$PSScriptRoot\functions" -Filter *.ps1 | ForEach-Object {
     . $_.FullName
@@ -65,52 +106,15 @@ Get-ChildItem -Path "$PSScriptRoot\functions" -Filter *.ps1 | ForEach-Object {
 # Check Project Name Length
 checkProjectName -projectName $projectName
 
-# Location short codes
-$locationShortCodes = @{
-    "eastus" = "eus"
-    "eastus2" = "eus2"
-    "westus" = "wus"
-    "westus2" = "wus2"
-    "northcentralus" = "ncu"
-    "southcentralus" = "scu"
-    "centralus" = "ceu"
-    "canadacentral" = "cac"
-    "canadaeast" = "cae"
-    "brazilsouth" = "sau"
-    "northeurope" = "neu"
-    "westeurope" = "weu"
-    "uksouth" = "uks"
-    "ukwest" = "ukw"
-    "francecentral" = "frc"
-    "francesouth" = "frs"
-    "germanywestcentral" = "gwc"
-    "germanynorth" = "gen"
-    "switzerlandnorth" = "swn"
-    "switzerlandwest" = "sww"
-    "norwayeast" = "noe"
-    "norwaywest" = "now"
-    "eastasia" = "eas"
-    "southeastasia" = "sea"
-    "japaneast" = "jae"
-    "japanwest" = "jaw"
-    "australiaeast" = "aue"
-    "australiasoutheast" = "aus"
-    "centralindia" = "cin"
-    "southindia" = "sin"
-    "westindia" = "win"
-    "koreacentral" = "koc"
-    "koreasouth" = "kos"
-    "uaenorth" = "uan"
-    "uaecentral" = "uac"
-    "southafricanorth" = "sna"
-    "southafricawest" = "saw"
-}
-
 # Set Azure Subscription
 az account set --subscription $subscriptionId
 
 # Retrieve subscription ID using Azure CLI
 $subscriptionId = az account show --query id -o tsv
+
+# Retrieve User Account using Azure CLI
+$userAccount = az account show --query user.name -o tsv
+$userAccountGuid = az ad signed-in-user show --query id -o tsv
 
 # Get location short code
 $deployLocationShortCode = $locationShortCodes[$deployLocation]
@@ -128,15 +132,17 @@ az deployment sub create `
     --location $deployLocation `
     --template-file ./hugoScheduler.bicep `
     --parameters deployLocation=$deployLocation `
-                 deployLocationShortCode=$deployLocationShortCode `
-                 environmentType=$environmentType `
-                 deployGuid=$deployGuid `
-                 projectName=$projectName `
+    deployLocationShortCode=$deployLocationShortCode `
+    environmentType=$environmentType `
+    deployGuid=$deployGuid `
+    deployedBy=$userAccount `
+    projectName=$projectName `
+    userAccountGuid=$userAccountGuid `
     --confirm-with-what-if `
     --output none
 
 #
 $endTimeStamp = Get-Date -Format 'HH:mm:ss'
-$timeDifference = New-TimeSpan -Start $startTimeStamp -End $endTimeStamp ;  $deploymentDuration = "{0:hh\:mm\:ss}" -f $timeDifference
+$timeDifference = New-TimeSpan -Start $startTimeStamp -End $endTimeStamp ; $deploymentDuration = "{0:hh\:mm\:ss}" -f $timeDifference
 
 Write-Output "Hugo Scheduler - Deployment Completed: $endTimeStamp - Deployment Duration: $deploymentDuration"
