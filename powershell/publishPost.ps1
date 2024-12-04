@@ -59,7 +59,7 @@ try {
 
     # Git Push
     Write-Output `r "[Script] :: Adding new Post to Commit!"`r
-    $folderName = $(git rev-parse --abbrev-ref HEAD).Trim('post/')
+    $folderName = $(git rev-parse --abbrev-ref HEAD).TrimStart('post/')
     git add ./content/posts/$folderName/* ; git commit -m $CommitMessage
 
     Write-Output `r "[Script] :: Pushing Post to Git"`r
